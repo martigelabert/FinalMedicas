@@ -121,9 +121,9 @@ if False:
 ###################################################################33
 # Create projections varying the angle of rotation
 #   Configure visualization colormap
-img_dcm = slides3d
-#slides3d[segmentation[0:89]] = 255
 #img_dcm = slides3d
+slides3d[segmentation[0:89]] = 255
+img_dcm = slides3d
 img_min = np.amin(img_dcm)
 img_max = np.amax(img_dcm)
 cm = matplotlib.colormaps['bone']
@@ -131,7 +131,7 @@ fig, ax = plt.subplots()
 #   Configure directory to save results
 os.makedirs('results/MIP/', exist_ok=True)
 #   Create projections
-n = 6
+n = 45
 projections = []
 for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
     rotated_img = rotate_on_axial_plane(img_dcm, alpha)
