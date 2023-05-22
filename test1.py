@@ -1,6 +1,7 @@
 
 
 # TODO: https://github.com/pydicom/pydicom/blob/master/examples/image_processing/reslice.py
+# TODO: https://www.raddq.com/dicom-processing-segmentation-visualization-in-python/
 # DICOM loading and visualization
 """
 # Load the segmentation image, and the corresponding CT image with PyDicom. Rearrange
@@ -20,34 +21,14 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from PIL import Image
 import scipy
-def median_sagittal_plane(img_dcm: np.ndarray) -> np.ndarray:
-    """ Compute the median sagittal plane of the CT image provided. """
-    return img_dcm[:, :, img_dcm.shape[1]//2]    # Why //2?
-
-
-def median_coronal_plane(img_dcm: np.ndarray) -> np.ndarray:
-    """ Compute the median sagittal plane of the CT image provided. """
-    return img_dcm[:, img_dcm.shape[2]//2, :]
-
 
 def MIP_sagittal_plane(img_dcm: np.ndarray) -> np.ndarray:
     """ Compute the maximum intensity projection on the sagittal orientation. """
     return np.max(img_dcm, axis=2)
-
-
-def AIP_sagittal_plane(img_dcm: np.ndarray) -> np.ndarray:
-    """ Compute the average intensity projection on the sagittal orientation. """
-    return np.mean(img_dcm, axis=2)
-
-
 def MIP_coronal_plane(img_dcm: np.ndarray) -> np.ndarray:
     """ Compute the maximum intensity projection on the coronal orientation. """
     return np.max(img_dcm, axis=1)
 
-
-def AIP_coronal_plane(img_dcm: np.ndarray) -> np.ndarray:
-    """ Compute the average intensity projection on the coronal orientation. """
-    return np.mean(img_dcm, axis=1)
 
 
 def rotate_on_axial_plane(img_dcm: np.ndarray, angle_in_degrees: float) -> np.ndarray:
@@ -95,12 +76,45 @@ for i in paths:
     #print("Slice Index:", slice_index)
 
     # images
-    frames.append(Image.fromarray(ds.pixel_array))
+    #frames.append(Image.fromarray(ds.pixel_array))
 
     #plt.imshow(ds.pixel_array)
     #plt.show()
 
-print(len(slices))
+print(f'num of slices is {len(slices)}')
+slices = sorted(slices, key=lambda s: s.SliceLocation)
+
+# pixel aspects, assuming all slices are the same
+ps = slices[0].PixelSpacing
+ss = slices[0].SliceThickness
+ax_aspect = ps[1]/ps[0]
+sag_aspect = ps[1]/ss
+cor_aspect = ss/ps[0]
+
+# create 3D array
+img_shape = list(slices[0].pixel_array.shape)
+img_shape.append(len(slices))
+img3d = np.zeros(img_shape)
+
+# fill 3D array with the images from the files
+for i, s in enumerate(slices):
+    img2d = s.pixel_array
+    img3d[:, :, i] = img2d
+
+# plot 3 orthogonal slices
+a1 = plt.subplot(2, 2, 1)
+plt.imshow(img3d[:, :, img_shape[2]//2])
+a1.set_aspect(ax_aspect)
+
+a2 = plt.subplot(2, 2, 2)
+plt.imshow(img3d[:, img_shape[1]//2, :])
+a2.set_aspect(sag_aspect)
+
+a3 = plt.subplot(2, 2, 3)
+plt.imshow(img3d[img_shape[0]//2, :, :].T)
+a3.set_aspect(cor_aspect)
+
+plt.show()
 
 
 # Save the frames as an animated GIF
@@ -112,3 +126,17 @@ print(len(slices))
 
 # Acces to atributtes
 #ds.AcquisitionNumber
+def showSegmentation(path):
+    ds = pydicom.dcmread(path)
+    frames = []
+    print(ds.pixel_array.shape)
+    #for i in ds.pixel_array:
+        #frames.append(i)
+        #plt.imshow(i)
+        #plt.show()
+
+    #plt.imshow(ds.pixel_array)
+    #plt.show()
+
+showSegmentation('HCC_005/01-23-1999-NA-ABDPELVIS-36548/300.000000-Segmentation-06660/1-1.dcm')
+
