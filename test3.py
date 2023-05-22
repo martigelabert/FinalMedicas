@@ -2,6 +2,7 @@
 # watch https://www.youtube.com/watch?v=0yy83vTnx-4
 # TODO: https://github.com/pydicom/pydicom/blob/master/examples/image_processing/reslice.py
 # TODO: https://www.raddq.com/dicom-processing-segmentation-visualization-in-python/
+# TODO: https://www.youtube.com/watch?v=lhcJd3uKE2k
 # DICOM loading and visualization
 """
 # Load the segmentation image, and the corresponding CT image with PyDicom. Rearrange
@@ -116,12 +117,13 @@ if False:
         #plt.show()
 
         masked = np.array(masked)
+
 ###################################################################33
 # Create projections varying the angle of rotation
 #   Configure visualization colormap
-#img_dcm = masked#slides3d
-slides3d[segmentation[0:89]] = 255
 img_dcm = slides3d
+#slides3d[segmentation[0:89]] = 255
+#img_dcm = slides3d
 img_min = np.amin(img_dcm)
 img_max = np.amax(img_dcm)
 cm = matplotlib.colormaps['bone']
