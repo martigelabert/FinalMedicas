@@ -7,6 +7,7 @@ import matplotlib.animation as animation
 from PIL import Image
 import scipy
 import matplotlib
+import re
 
 def MIP_sagittal_plane(img_dcm: np.ndarray) -> np.ndarray:
     """ Compute the maximum intensity projection on the sagittal orientation. """
@@ -41,24 +42,28 @@ def get_segmentation_masks():
     return mask1, mask2, mask3, mask4
 
 def load_projection_from_folder(path, type):
-    if type == 0:
-        plt.savefig(f'results/MIP_FINAL_SAGITTAL/Projection_{idx}.png', bbox_inches='tight',
-                    pad_inches=0)  # Save animation
-    elif type == 1:
-        plt.savefig(f'results/MIP_FINAL_CORONAL/Projection_{idx}.png', bbox_inches='tight',
-                    pad_inches=0)  # Save animation
+    path_type = ['MIP_FINAL_SAGITTAL', 'MIP_FINAL_CORONAL']
 
-    projections.append(projection)  # Save for later animation
+    # Directorio de las imágenes
+    folder_path = path
 
-    # Save and visualize animation
-    animation_data = [
-        [plt.imshow(img, animated=True, cmap=cm, vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])]
-        for img in projections
-    ]
-    anim = animation.ArtistAnimation(fig, animation_data,
-                                     interval=250, blit=True)
-    anim.save('results/MIP/Animation.gif')  # Save animation
-    plt.show()  # Show animation
+    # Obtener la lista de imágenes en el directorio y ordenarlas por número
+    image_files = sorted([f for f in os.listdir(folder_path) if re.match(r'Projection_\d+\.png', f)])
+
+    # Crear una lista de objetos de imagen para la animación
+    animation_data = []
+    for file_name in image_files:
+        file_path = os.path.join(folder_path, file_name)
+        img = Image.open(file_path)
+        animation_data.append([plt.imshow(img, animated=True)])
+
+    # Crear la animación
+    fig = plt.figure()
+    anim = animation.ArtistAnimation(fig, animation_data, interval=250, blit=True)
+
+    # Guardar la animación en un archivo GIF
+    anim.save(f'results/{path_type[type]}/Animation.gif', writer='pillow')  # Requiere la biblioteca Pillow
+
 
 def execute_code(path, type):
     #paths = get_dcm_paths('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837')
@@ -138,3 +143,8 @@ def execute_code(path, type):
 
 if __name__ == '__main__':
     # Paths of level
+    SAGITTAL = 0
+    CORONAL  = 1
+    execute_code('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837', SAGITTAL)
+    load_projection_from_folder('results/MIP_FINAL_SAGITTAL/', SAGITTAL)
+
