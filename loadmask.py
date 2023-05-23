@@ -26,6 +26,6 @@ for segment_number in result.available_segments:
     image = result.segment_image(segment_number)  # lazy construction
     print(f'{result["segment_infos"][1]}')
 
-# result.available_segments # numero de segmentos
-# result.segment_infos[1].SegmentLabel nombre del label
-#
+# for segment_number in result.available_segments: # numero de segmentos
+    # result.segment_infos[segment_number].SegmentLabel # nombre del label
+    # result.segment_data(segment_number) # labels de la imagen
