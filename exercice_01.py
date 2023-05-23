@@ -41,31 +41,8 @@ def get_segmentation_masks():
     mask4 = segmentation[89 * 3:]
     return mask1, mask2, mask3, mask4
 
-def load_projection_from_folder(path, type):
-    path_type = ['MIP_FINAL_SAGITTAL', 'MIP_FINAL_CORONAL']
 
-    # Directorio de las imágenes
-    folder_path = path
-
-    # Obtener la lista de imágenes en el directorio y ordenarlas por número
-    image_files = sorted([f for f in os.listdir(folder_path) if re.match(r'Projection_\d+\.png', f)])
-
-    # Crear una lista de objetos de imagen para la animación
-    animation_data = []
-    for file_name in image_files:
-        file_path = os.path.join(folder_path, file_name)
-        img = Image.open(file_path)
-        animation_data.append([plt.imshow(img, animated=True)])
-
-    # Crear la animación
-    fig = plt.figure()
-    anim = animation.ArtistAnimation(fig, animation_data, interval=250, blit=True)
-
-    # Guardar la animación en un archivo GIF
-    anim.save(f'results/{path_type[type]}/Animation.gif', writer='pillow')  # Requiere la biblioteca Pillow
-
-
-def execute_code(path, type):
+def execute_code(path, type, only_animation=False):
     #paths = get_dcm_paths('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837')
     paths = get_dcm_paths(path)
 
@@ -100,51 +77,78 @@ def execute_code(path, type):
     os.makedirs('results/MIP_FINAL_SAGITTAL/', exist_ok=True)
     os.makedirs('results/MIP_FINAL_CORONAL/', exist_ok=True)
 
-    #   Create projections
-    n = 16
-    projections = []
-    for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
-        rotated_img = rotate_on_axial_plane(img_dcm, alpha)
-        projection = MIP_sagittal_plane(rotated_img)
+    if not(only_animation):
+        #   Create projections
+        n = 16
+        projections = []
+        for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
+            rotated_img = rotate_on_axial_plane(img_dcm, alpha)
+            projection = MIP_sagittal_plane(rotated_img)
 
-        rotated_mask1 = rotate_on_axial_plane(mask1, alpha)
-        rotated_mask2 = rotate_on_axial_plane(mask2, alpha)
-        rotated_mask3 = rotate_on_axial_plane(mask3, alpha)
-        rotated_mask4 = rotate_on_axial_plane(mask4, alpha)
+            rotated_mask1 = rotate_on_axial_plane(mask1, alpha)
+            rotated_mask2 = rotate_on_axial_plane(mask2, alpha)
+            rotated_mask3 = rotate_on_axial_plane(mask3, alpha)
+            rotated_mask4 = rotate_on_axial_plane(mask4, alpha)
 
-        if type == 0:
-            mask1_projection = MIP_sagittal_plane(rotated_mask1)
-            mask2_projection = MIP_sagittal_plane(rotated_mask2)
-            mask3_projection = MIP_sagittal_plane(rotated_mask3)
-            mask4_projection = MIP_sagittal_plane(rotated_mask4)
-        elif type==1:
-            mask1_projection = MIP_coronal_plane(rotated_mask1)
-            mask2_projection = MIP_coronal_plane(rotated_mask2)
-            mask3_projection = MIP_coronal_plane(rotated_mask3)
-            mask4_projection = MIP_coronal_plane(rotated_mask4)
+            if type == 0:
+                mask1_projection = MIP_sagittal_plane(rotated_mask1)
+                mask2_projection = MIP_sagittal_plane(rotated_mask2)
+                mask3_projection = MIP_sagittal_plane(rotated_mask3)
+                mask4_projection = MIP_sagittal_plane(rotated_mask4)
+            elif type==1:
+                mask1_projection = MIP_coronal_plane(rotated_mask1)
+                mask2_projection = MIP_coronal_plane(rotated_mask2)
+                mask3_projection = MIP_coronal_plane(rotated_mask3)
+                mask4_projection = MIP_coronal_plane(rotated_mask4)
 
 
-        mask1_projection = np.ma.masked_equal(mask1_projection, 0)
-        mask2_projection = np.ma.masked_equal(mask2_projection, 0)
-        mask3_projection = np.ma.masked_equal(mask3_projection, 0)
-        mask4_projection = np.ma.masked_equal(mask4_projection, 0)
+            mask1_projection = np.ma.masked_equal(mask1_projection, 0)
+            mask2_projection = np.ma.masked_equal(mask2_projection, 0)
+            mask3_projection = np.ma.masked_equal(mask3_projection, 0)
+            mask4_projection = np.ma.masked_equal(mask4_projection, 0)
 
-        plt.imshow(projection, cmap=cm, vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])
-        plt.imshow(mask1_projection, cmap="jet", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
-        plt.imshow(mask2_projection, cmap="hot", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
-        plt.imshow(mask3_projection, cmap="viridis", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
-        plt.imshow(mask4_projection, cmap="inferno", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
+            plt.imshow(projection, cmap=cm, vmin=img_min, vmax=img_max, aspect=pixel_len_mm[0] / pixel_len_mm[1])
+            plt.imshow(mask1_projection, cmap="jet", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
+            plt.imshow(mask2_projection, cmap="hot", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
+            plt.imshow(mask3_projection, cmap="viridis", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
+            plt.imshow(mask4_projection, cmap="inferno", aspect=pixel_len_mm[0] / pixel_len_mm[1], alpha=0.5)
 
-        if type == 0:
-            plt.savefig(f'results/MIP_FINAL_SAGITTAL/Projection_{idx}.png', bbox_inches='tight', pad_inches=0)  # Save animation
-        elif type ==1:
-            plt.savefig(f'results/MIP_FINAL_CORONAL/Projection_{idx}.png', bbox_inches='tight', pad_inches=0)  # Save animation
+            if type == 0:
+                plt.savefig(f'results/MIP_FINAL_SAGITTAL/Projection_{idx}.png', bbox_inches='tight', pad_inches=0)  # Save animation
+            elif type ==1:
+                plt.savefig(f'results/MIP_FINAL_CORONAL/Projection_{idx}.png', bbox_inches='tight', pad_inches=0)  # Save animation
+    #####
+    path_type = ['MIP_FINAL_SAGITTAL', 'MIP_FINAL_CORONAL']
+    # Directorio de las imágenes
+    folder_path = f'results/{path_type[type]}'
+
+    # Obtener la lista de imágenes en el directorio y ordenarlas por número
+    image_files = sorted([f for f in os.listdir(folder_path) if re.match(r'Projection_\d+\.png', f)])
+
+    # Crear una lista de objetos de imagen para la animación
+    animation_data = []
+    for file_name in image_files:
+        file_path = os.path.join(folder_path, file_name)
+        img = Image.open(file_path)
+        animation_data.append(img)
+    #    animation_data.append([plt.imshow(img, animated=True)])
+
+    animation_data[0].save("results/"+path_type[type]+"/Animation.gif", save_all=True, append_images=animation_data[1:], optimize=False, duration=250, loop=1)
+    # Crear la animación
+    #fig = plt.figure()
+    #anim = animation.ArtistAnimation(fig, animation_data, interval=250, blit=True)
+
+    # Guardar la animación en un archivo GIF
+    #anim.save("results/"+path_type[type]+"/Animation.gif")  # Requiere la biblioteca Pillow
+
+    # Mostrar la animación
+    #plt.show()
 
 
 if __name__ == '__main__':
-    # Paths of level
+    # Select level
     SAGITTAL = 0
     CORONAL  = 1
-    execute_code('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837', SAGITTAL)
-    load_projection_from_folder('results/MIP_FINAL_SAGITTAL/', SAGITTAL)
+    execute_code('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837', CORONAL, False)
+
 
