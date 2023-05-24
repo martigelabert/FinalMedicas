@@ -134,16 +134,6 @@ def execute_code(path, type, only_animation=False):
     #    animation_data.append([plt.imshow(img, animated=True)])
 
     animation_data[0].save("results/"+path_type[type]+"/Animation.gif", save_all=True, append_images=animation_data[1:], optimize=False, duration=250, loop=1)
-    # Crear la animación
-    #fig = plt.figure()
-    #anim = animation.ArtistAnimation(fig, animation_data, interval=250, blit=True)
-
-    # Guardar la animación en un archivo GIF
-    #anim.save("results/"+path_type[type]+"/Animation.gif")  # Requiere la biblioteca Pillow
-
-    # Mostrar la animación
-    #plt.show()
-
 
 if __name__ == '__main__':
     # Select level
