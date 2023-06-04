@@ -24,8 +24,8 @@ result = reader.read(dcm)
 for segment_number in result.available_segments:
     image_data = result.segment_data(segment_number)  # directly available
     image = result.segment_image(segment_number)  # lazy construction
-    print(f'{result["segment_infos"][1]}')
+    #print(f'{result["segment_infos"][1]}')
 
-# for segment_number in result.available_segments: # numero de segmentos
-    # result.segment_infos[segment_number].SegmentLabel # nombre del label
-    # result.segment_data(segment_number) # labels de la imagen
+#for segment_number in result.available_segments: # numero de segmentos
+#    result.segment_infos[segment_number].SegmentLabel # nombre del label
+#    result.segment_data(segment_number) # labels de la imagen
