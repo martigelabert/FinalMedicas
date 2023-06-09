@@ -27,35 +27,6 @@ def get_dcm_paths(path):
     path_names = sorted(os.listdir(path), key=_custom_sort)
     return list(map(lambda filename: os.path.join(path, filename), path_names))
 
-def get_segmentation_masks():
-    ds = pydicom.dcmread('HCC_005/01-23-1999-NA-ABDPELVIS-36548/300.000000-Segmentation-06660/1-1.dcm')
-    segmentation = []
-
-    for i in ds.pixel_array:
-        segmentation.append(i)
-    segmentation = np.array(segmentation)
-
-    mask1 = segmentation[:89]
-    mask2 = segmentation[89:89 * 2]
-    mask3 = segmentation[89 * 2 + 1:89 * 3 + 1]
-    mask4 = segmentation[89 * 3:]
-    return mask1, mask2, mask3, mask4
-
-def get_segmentation_masks_correctly():
-    ds = pydicom.dcmread('HCC_005/01-23-1999-NA-ABDPELVIS-36548/300.000000-Segmentation-06660/1-1.dcm')
-    segmentation = []
-
-    for i in ds.pixel_array:
-        segmentation.append(i)
-    segmentation = np.array(segmentation)
-
-    mask1 = segmentation[:89]
-    mask2 = segmentation[89:89 * 2]
-    mask3 = segmentation[89 * 2 + 1:89 * 3 + 1]
-    mask4 = segmentation[89 * 3:]
-    return mask1, mask2, mask3, mask4
-
-
 def get_segmentation_masks_correctly_place():
     ds = pydicom.dcmread('HCC_005/01-23-1999-NA-ABDPELVIS-36548/300.000000-Segmentation-06660/1-1.dcm')
     segmentation = []
@@ -134,7 +105,7 @@ def execute_code(path, type, only_animation=False):
     slides3d = np.array([s.pixel_array for s in slices])
 
     # get the mask for each class
-    mask1, mask2, mask3, mask4 = get_segmentation_masks()
+    mask1, mask2, mask3, mask4 = get_segmentation_masks_correctly_place()#get_segmentation_masks()
 
     img_dcm = slides3d
     img_min = np.amin(img_dcm)
@@ -148,7 +119,7 @@ def execute_code(path, type, only_animation=False):
 
     if not(only_animation):
         #   Create projections
-        n = 16
+        n = 24
         projections = []
         for idx, alpha in enumerate(np.linspace(0, 360 * (n - 1) / n, num=n)):
             rotated_img = rotate_on_axial_plane(img_dcm, alpha)
@@ -204,51 +175,10 @@ def execute_code(path, type, only_animation=False):
 
     animation_data[0].save("results/"+path_type[type]+"/Animation.gif", save_all=True, append_images=animation_data[1:], optimize=False, duration=250, loop=1)
 
-def posible(ds):
-    segmentaciones = ds.SegmentSequence
-
-    for s in segmentaciones:
-        # vamos a tener 4
-        label = s.SegmentLabel
-        labelNumber = s.SegmentNumber
-
 if __name__ == '__main__':
     # Select level
-    # SAGITTAL = 0
-    # CORONAL  = 1
-    # execute_code('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837', CORONAL, False)
-
-    ds = pydicom.dcmread('HCC_005/01-23-1999-NA-ABDPELVIS-36548/300.000000-Segmentation-06660/1-1.dcm')
-    segmentation = []
-
-    for i in ds['PerFrameFunctionalGroupsSequence']:
-        image_position = i.PlanePositionSequence[0].ImagePositionPatient # última componente es la que cambia
-        print(image_position)
-        #print(image_position)
-        #print(i)
-
-        segment_seq = i.SegmentIdentificationSequence
-
-        if segment_seq is not None:
-            segment_number = segment_seq[0].ReferencedSegmentNumber # esto te dice en que segmentación estas
-            print("Segment Number:", segment_number)
-            #print("Segment Label:", algo)
-            #plt.imshow(i.pixel_array)
-            #plt.show()
-
-    # ds['PerFrameFunctionalGroupsSequence'][100]['SegmentIdentificationSequence']
-    # ds['PerFrameFunctionalGroupsSequence']
-
-    for i in ds.pixel_array:
-        segmentation.append(i)
-    segmentation = np.array(segmentation)
-
-    mask1 = segmentation[:89]
-    mask2 = segmentation[89:89 * 2]
-    mask3 = segmentation[89 * 2 + 1:89 * 3 + 1]
-    mask4 = segmentation[89 * 3:]
-
-    #return mask1, mask2, mask3, mask4
-
+    SAGITTAL = 0
+    CORONAL  = 1
+    execute_code('HCC_005/01-23-1999-NA-ABDPELVIS-36548/103.000000-LIVER 3 PHASE AP-85837', CORONAL, False)
 
 
