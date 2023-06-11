@@ -1,3 +1,5 @@
+from ctypes import py_object
+
 import pydicom
 import numpy as np
 import sys
@@ -61,6 +63,8 @@ def get_amygdala_mask(img_atlas: np.ndarray) -> np.ndarray:
     #amygdala_mask[img_atlas == 46] = 1
     return amygdala_mask
 
+
+
 def get_dcm_paths(path):
     def _custom_sort(filename):
         x = int(filename.split('.')[0])
@@ -70,21 +74,81 @@ def get_dcm_paths(path):
 
 if __name__ == '__main__':
 
+    dc_atlas = pydicom.dcmread(_atlasPath)
+    dc_phantom = pydicom.dcmread(_panthomPath)
+
     files = get_dcm_paths('Project/RM_Brain_3D-SPGR')
     slices = []
     for f in files:
-        pass
-        #slices.append(pydicom.dcmread(f))
-    #slices = sorted(slices, key=lambda s: s.SliceLocation)
-    #slides3d = np.array([s.pixel_array for s in slices])
+        slices.append(pydicom.dcmread(f))
+    slices = sorted(slices, key=lambda s: s.SliceLocation)
+    slides3d = np.array([s.pixel_array for s in slices])
 
-    atlas = pydicom.dcmread(_atlasPath)
-    imgs_atlas = atlas.pixel_array
+    images_atlas = dc_atlas.pixel_array
+    # Crop phantom to atlas size
+    images_phantom = dc_phantom.pixel_array[6:-6, 6:-6, 6:-6]
+
+    # Si realizas crop no se requiere esta parte
+    padded_images_atlas = [np.pad(img_atlas,[(int((images_phantom.shape[0] - images_atlas.shape[0]) / 2),),
+                                             (int((images_phantom.shape[1] - images_atlas.shape[1]) / 2),)],mode='constant') for img_atlas in images_atlas]
+
+    padded_images_atlas = np.array(padded_images_atlas)
+
+
+    fig, axs = plt.subplots(1, 2)
+    axs[0].imshow(images_atlas[100,:,:], cmap='bone')
+    axs[1].imshow(images_phantom[100, :, :], cmap='tab20')
+    fig.show()
+
+
+
+    for img_patient in slides3d:
+
+        print(img_patient.shape)
+        # Crear figura y subplots
+        fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+
+        # Subplot 1
+        axs[0, 0].imshow(img_patient)
+        #axs[0, 0].set_title('Imagen 1')
+
+        # Subplot 2
+        axs[0, 1].imshow(img_patient)
+        #axs[0, 1].set_title('Imagen 2')
+
+        # Subplot 3
+        axs[1, 0].imshow(img_patient)
+        #axs[1, 0].set_title('Imagen 3')
+
+        # Subplot 4
+        axs[1, 1].imshow(img_patient)
+        #axs[1, 1].set_title('Imagen 4')
+
+        # Ajustar espaciado entre subplots
+        plt.tight_layout()
+
+        # Ocultar ejes de coordenadas
+        for ax in axs.flat:
+            ax.axis('off')
+
+        # Mostrar el gráfico
+        plt.show()
+
+
+
+
+    #imgs_atlas = atlas.pixel_array
     #print(imgs_atlas.shape)
-    plt.imshow(imgs_atlas[80])
-    plt.show()
+    # este
+    #plt.imshow(imgs_atlas[80])
+    #plt.show()
 
-    voxelView(imgs_atlas)
+    #voxelView(imgs_atlas)
+    #for i in imgs_atlas:
+    # atlas
+    #padding = [np.pad(img_atlas,[(int())])]
+
+
 
 
 
