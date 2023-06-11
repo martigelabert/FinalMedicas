@@ -16,6 +16,9 @@ import open3d as o3d
 import cv2
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.ndimage import zoom
+import math
+import scipy
+from scipy.optimize import least_squares
 
 _atlasPath = 'Project/AAL3_1mm.dcm'
 _panthomPath = 'Project/icbm_avg_152_t1_tal_nlin_symmetric_VI.dcm'
@@ -77,7 +80,75 @@ def detect_landmarks(gray):
 
     return landmarks
 
+# Activity5
 
+def multiply_quaternions(
+        q1: tuple[float, float, float, float],
+        q2: tuple[float, float, float, float]
+        ) -> tuple[float, float, float, float]:
+    """ Multiply two quaternions, expressed as (1, i, j, k). """
+    # Your code here:
+    #   ...
+    return (
+        q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
+        q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
+        q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
+        q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]
+    )
+
+
+def conjugate_quaternion(
+        q: tuple[float, float, float, float]
+        ) -> tuple[float, float, float, float]:
+    """ Multiply two quaternions, expressed as (1, i, j, k). """
+    # Your code here:
+    #   ...
+    return (
+        q[0], -q[1], -q[2], -q[3]
+    )
+
+from skimage import exposure
+def matchIntensityValues(input, reference):
+    input_flat = input.flatten()
+    reference_flat = reference.flatten()
+    matched_flat = exposure.match_histograms(input_flat, reference_flat)
+    mapped = np.reshape(matched_flat, input.shape)
+    return mapped
+
+
+def translation(
+        point: tuple[float, float, float],
+        translation_vector: tuple[float, float, float]
+        ) -> tuple[float, float, float]:
+    """ Perform translation of `point` by `translation_vector`. """
+    x, y, z = point
+    v1, v2, v3 = translation_vector
+    # Your code here
+    # ...
+    return (x+v1, y+v2, z+v3)
+
+def axial_rotation(
+        point: tuple[float, float, float],
+        angle_in_rads: float,
+        axis_of_rotation: tuple[float, float, float]) -> tuple[float, float, float]:
+    """ Perform axial rotation of `point` around `axis_of_rotation` by `angle_in_rads`. """
+    x, y, z = point
+    v1, v2, v3 = axis_of_rotation
+    # Normalize axis of rotation to avoid restrictions on optimizer
+    v_norm = math.sqrt(sum([coord ** 2 for coord in [v1, v2, v3]]))
+    v1, v2, v3 = v1 / v_norm, v2 / v_norm, v3 / v_norm
+    # Your code here:
+    #   ...
+    #   Quaternion associated to point.
+    p = (0, x, y, z)
+    #   Quaternion associated to axial rotation.
+    cos, sin = math.cos(angle_in_rads / 2), math.sin(angle_in_rads / 2)
+    q = (cos, sin * v1, sin * v2, sin * v3)
+    #   Quaternion associated to image point
+    q_star = conjugate_quaternion(q)
+    p_prime = multiply_quaternions(q, multiply_quaternions(p, q_star))
+    #   Interpret as 3D point (i.e. drop first coordinate)
+    return p_prime[1], p_prime[2], p_prime[3]
 
 
 
@@ -88,6 +159,20 @@ def get_dcm_paths(path):
         return x
     path_names = sorted(os.listdir(path), key=_custom_sort)
     return list(map(lambda filename: os.path.join(path, filename), path_names))
+
+def mean_squared_error(a, b):
+    return np.mean((a - b)**2)
+
+
+def translation_rotation(point, translation_param, angle, axialRotation):
+    x, y, z = point
+    t1, t2, t3 = translation_param
+    angle_in_rads = angle
+    v1, v2, v3 = axialRotation
+    t_x, t_y, t_z = translation([x, y, z], [t1, t2, t3])
+    r_x, r_y, r_z = axial_rotation([t_x, t_y, t_z], angle_in_rads, [v1, v2, v3])
+    return [r_x, r_y, r_z]
+
 
 if __name__ == '__main__':
 
@@ -111,7 +196,7 @@ if __name__ == '__main__':
 
     images_atlas = dc_atlas.pixel_array
     # Crop phantom to atlas size
-    images_phantom = dc_phantom.pixel_array[6:-6, 6:-6, 6:-6]
+    images_phantom = dc_phantom.pixel_array[6:-6, 6:-7, 6:-6]
 
     mask_atlas = get_amygdala_mask(images_atlas)
 
@@ -132,23 +217,65 @@ if __name__ == '__main__':
     # manual shaping and croping of patient data
     # slides3d
     # Checked with 3d slicer to make it more or less accuarated
-
-
+    match_slices = slides3d[
+                   (slides3d.shape[0] - 181) :(slides3d.shape[0] - 181) + 181,
+                   42:430,
+                   80:430]
 
     aspect_ratio_zoom = (mask_atlas.shape[0] / match_slices.shape[0],
-                      mask_atlas.shape[1] / match_slices.shape[1],
+                         (mask_atlas.shape[1] -1 ) / match_slices.shape[1],
                       mask_atlas.shape[2] / match_slices.shape[2])
 
     final_match_slices = zoom(match_slices, aspect_ratio_zoom, order=1)
 
-    for i in final_match_slices:
-        plt.imshow(i, cmap='bone')
-        plt.show()
+    # try and error
+    rotated_final_match_slices = \
+        scipy.ndimage.rotate(final_match_slices, 5, axes=(1, 2), reshape=False)
 
+    # BORRAR
+    #processed_input = normalize_intensity(rotated_final_match_slices, images_phantom)
+    rotated_final_match_slices = matchIntensityValues(rotated_final_match_slices, images_phantom)
+    # Generate landmarks
+    _normalizedLandmarks = rotated_final_match_slices / np.max(rotated_final_match_slices)
+    landMarks_images_pacient = np.round(_normalizedLandmarks, 2) * 100
 
+    def start_corregistration(landMarksA, landMarksB):
+        translation = [0, 0, 0]
+        angle = 0
+        axialRotation = [1,0,0]
 
+        cA = np.mean(landMarksA, axis=0)
+        cB= np.mean(landMarksB, axis=0)
 
+        translation[0] = cA[0] - cB[0]
+        angle = cA[1] - cB[1]
+        axialRotation[2] = cA[2] - cB[2]
 
+        def minimize(params):
+            t1,t2,t3, angle, v1,v2,v3 = params
+            translation = np.array([ t1,t2,t3])
+            axialRotation = np.array([v1,v2,v3])
+            tmpLandMarks = []
+            for point in landMarksB:
+                tmpPoint = translation_rotation(point, translation, angle, axialRotation)
+                tmpLandMarks.append(tmpPoint)
+            tmpLandMarks = np.array(tmpLandMarks)
+            # distance
+            ressiduals = np.linalg.norm(landMarksA - tmpLandMarks, axis=1)
+            print(ressiduals)
+            return ressiduals
+
+        return least_squares(minimize,x0=np.asarray([translation[0],translation[1],translation[2], angle, axialRotation[0],axialRotation[1],axialRotation[2]]), verbose=2)
+
+    # Coregister landmarks, we want to map the phantom and our image landmarks
+    # So we transform our data into points
+    landMarksA = images_phantom.reshape(-1, 3)
+    landMarksB = landMarks_images_pacient.reshape(-1, 3)
+
+    optimal_params = start_corregistration(landMarksA, landMarksB)
+
+    # [1.5, -2.00, -2.38, 0.15, 0.62, 0.51, 0.62]
+    print(optimal_params)
 
 
 
