@@ -15,31 +15,30 @@ from sklearn.neighbors import NearestNeighbors
 import open3d as o3d
 import cv2
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.ndimage import zoom
 
 _atlasPath = 'Project/AAL3_1mm.dcm'
 _panthomPath = 'Project/icbm_avg_152_t1_tal_nlin_symmetric_VI.dcm'
+
 
 def get_amygdala_mask(img_atlas: np.ndarray) -> np.ndarray:
     # Your code here:
     #   ...
     amygdala_mask = np.zeros_like(img_atlas)
-    #enable = [127, 121,147, 137, 135]
-    #for i in enable:
+    # enable = [127, 121,147, 137, 135]
+    # for i in enable:
     #    amygdala_mask[img_atlas == i] = 1
 
-    #amygdala_mask[img_atlas == 46] = 1
-    amygdala_mask[(121 <= img_atlas) & (img_atlas <= 147)] = 1
-    #amygdala_mask[img_atlas <= 147] = 1
-
+    # amygdala_mask[img_atlas == 46] = 1
+    amygdala_mask[121 <= img_atlas] = 1
+    amygdala_mask[img_atlas <= 147] = 1
     return amygdala_mask
 
 
-def visualize_axial_slice(# Activity 8
+def visualize_axial_slice(  # Activity 8
         img: np.ndarray,
         mask: np.ndarray,
         mask_centroid: np.ndarray,
-        ):
+):
     """ Visualize the axial slice (firs dim.) of a single region with alpha fusion. """
     # Your code here
     #   Remember `matplotlib.colormaps['cmap_name'](...)`
@@ -51,9 +50,10 @@ def visualize_axial_slice(# Activity 8
     cmap = matplotlib.colormaps['bone']
     norm = matplotlib.colors.Normalize(vmin=np.amin(img_slice), vmax=np.amax(img_slice))
     fused_slice = \
-        0.5*cmap(norm(img_slice))[..., :3] + \
-        0.5*np.stack([mask_slice, np.zeros_like(mask_slice), np.zeros_like(mask_slice)], axis=-1)
+        0.5 * cmap(norm(img_slice))[..., :3] + \
+        0.5 * np.stack([mask_slice, np.zeros_like(mask_slice), np.zeros_like(mask_slice)], axis=-1)
     return fused_slice
+
 
 def voxelView(voxels):
     fig = plt.figure()
@@ -64,6 +64,7 @@ def voxelView(voxels):
     ax.set_ylabel('Y-axis')
     ax.set_zlabel('Z-axis')
     ax.set_title('3D Voxel Plot')
+
 
 def detect_landmarks(gray):
     # Crear el detector SIFT
@@ -78,16 +79,14 @@ def detect_landmarks(gray):
     return landmarks
 
 
-
-
-
-
 def get_dcm_paths(path):
     def _custom_sort(filename):
         x = int(filename.split('.')[0])
         return x
+
     path_names = sorted(os.listdir(path), key=_custom_sort)
     return list(map(lambda filename: os.path.join(path, filename), path_names))
+
 
 if __name__ == '__main__':
 
@@ -113,80 +112,26 @@ if __name__ == '__main__':
     # Crop phantom to atlas size
     images_phantom = dc_phantom.pixel_array[6:-6, 6:-6, 6:-6]
 
-    mask_atlas = get_amygdala_mask(images_atlas)
-
-    def find_centroid(mask: np.ndarray) -> np.ndarray:
-        # Your code here:
-        #   Consider using `np.where` to find the indices of the voxels in the mask
-        #   ...
-        idcs = np.where(mask == 1)
-        centroid = np.stack([
-            np.mean(idcs[0]),
-            np.mean(idcs[1]),
-            np.mean(idcs[2]),
-        ])
-        return centroid
-
-    mask_centroids_index = find_centroid(mask_atlas)[0].astype('int')
-
-    # manual shaping and croping of patient data
-    # slides3d
-    # Checked with 3d slicer to make it more or less accuarated
-
-
-
-    aspect_ratio_zoom = (mask_atlas.shape[0] / match_slices.shape[0],
-                      mask_atlas.shape[1] / match_slices.shape[1],
-                      mask_atlas.shape[2] / match_slices.shape[2])
-
-    final_match_slices = zoom(match_slices, aspect_ratio_zoom, order=1)
-
-    for i in final_match_slices:
-        plt.imshow(i, cmap='bone')
-        plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     # Si realizas crop no se requiere esta parte
-    padded_images_atlas = [np.pad(img_atlas,[(int((images_phantom.shape[0] - images_atlas.shape[0]) / 2),),
-                                             (int((images_phantom.shape[1] - images_atlas.shape[1]) / 2),)],mode='constant') for img_atlas in images_atlas]
+    padded_images_atlas = [np.pad(img_atlas, [(int((images_phantom.shape[0] - images_atlas.shape[0]) / 2),),
+                                              (int((images_phantom.shape[1] - images_atlas.shape[1]) / 2),)],
+                                  mode='constant') for img_atlas in images_atlas]
 
     padded_images_atlas = np.array(padded_images_atlas)
 
-    for i,img_atlas in enumerate(images_atlas):
+    for i, img_atlas in enumerate(images_atlas):
         fig, axs = plt.subplots(3, 3)
-        axs[0,0].imshow(padded_images_atlas[i,:,:], cmap='bone')
-        axs[0,1].imshow(padded_images_atlas[:, i, :], cmap='bone')
-        axs[0,2].imshow(padded_images_atlas[:, :, i], cmap='bone')
+        axs[0, 0].imshow(padded_images_atlas[i, :, :], cmap='bone')
+        axs[0, 1].imshow(padded_images_atlas[:, i, :], cmap='bone')
+        axs[0, 2].imshow(padded_images_atlas[:, :, i], cmap='bone')
 
-        axs[1,0].imshow(images_phantom[i,:,:], cmap='bone')
-        axs[1,1].imshow(images_phantom[:, i, :], cmap='bone')
-        axs[1,2].imshow(images_phantom[:, :, i], cmap='bone')
+        axs[1, 0].imshow(images_phantom[i, :, :], cmap='bone')
+        axs[1, 1].imshow(images_phantom[:, i, :], cmap='bone')
+        axs[1, 2].imshow(images_phantom[:, :, i], cmap='bone')
 
-        axs[2,0].imshow(slides3d[i,:,:], cmap='bone' )
-        axs[2,1].imshow(slides3d[:, i, :], cmap='bone', aspect=_sliceThickness)
-        axs[2,2].imshow(slides3d[:, :, i], cmap='bone' , aspect=_sliceThickness)
+        axs[2, 0].imshow(slides3d[i, :, :], cmap='bone')
+        axs[2, 1].imshow(slides3d[:, i, :], cmap='bone', aspect=_sliceThickness)
+        axs[2, 2].imshow(slides3d[:, :, i], cmap='bone', aspect=_sliceThickness)
         fig.show()
         plt.show()
 
@@ -198,19 +143,19 @@ if __name__ == '__main__':
 
         # Subplot 1
         axs[0, 0].imshow(img_patient)
-        #axs[0, 0].set_title('Imagen 1')
+        # axs[0, 0].set_title('Imagen 1')
 
         # Subplot 2
         axs[0, 1].imshow(img_patient)
-        #axs[0, 1].set_title('Imagen 2')
+        # axs[0, 1].set_title('Imagen 2')
 
         # Subplot 3
         axs[1, 0].imshow(img_patient)
-        #axs[1, 0].set_title('Imagen 3')
+        # axs[1, 0].set_title('Imagen 3')
 
         # Subplot 4
         axs[1, 1].imshow(img_patient)
-        #axs[1, 1].set_title('Imagen 4')
+        # axs[1, 1].set_title('Imagen 4')
 
         # Ajustar espaciado entre subplots
         plt.tight_layout()
@@ -222,23 +167,16 @@ if __name__ == '__main__':
         # Mostrar el gráfico
         plt.show()
 
-
-
-
-    #imgs_atlas = atlas.pixel_array
-    #print(imgs_atlas.shape)
+    # imgs_atlas = atlas.pixel_array
+    # print(imgs_atlas.shape)
     # este
-    #plt.imshow(imgs_atlas[80])
-    #plt.show()
+    # plt.imshow(imgs_atlas[80])
+    # plt.show()
 
-    #voxelView(imgs_atlas)
-    #for i in imgs_atlas:
+    # voxelView(imgs_atlas)
+    # for i in imgs_atlas:
     # atlas
-    #padding = [np.pad(img_atlas,[(int())])]
-
-
-
-
+    # padding = [np.pad(img_atlas,[(int())])]
 
     # the phantom es inmutable
     # osea que voy a tener que transformar los otros (rotarl al segor que mira de perfir y rotarlo para que se
