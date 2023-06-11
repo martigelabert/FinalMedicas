@@ -164,13 +164,11 @@ def mean_squared_error(a, b):
     return np.mean((a - b)**2)
 
 
-def translation_rotation(point, translation_param, angle, axialRotation):
+def translation_rotation(point, params):
     x, y, z = point
-    t1, t2, t3 = translation_param
-    angle_in_rads = angle
-    v1, v2, v3 = axialRotation
+    t1, t2, t3, angle_in_rads, v1, v2, v3 = params
     t_x, t_y, t_z = translation([x, y, z], [t1, t2, t3])
-    r_x, r_y, r_z = axial_rotation([t_x, t_y, t_z], angle_in_rads, [v1, v2, v3])
+    r_x, r_y, r_z = axial_rotation([t_x, t_y, t_z], angle_in_rads,[v1, v2, v3])
     return [r_x, r_y, r_z]
 
 
@@ -240,24 +238,28 @@ if __name__ == '__main__':
     landMarks_images_pacient = np.round(_normalizedLandmarks, 2) * 100
 
     def start_corregistration(landMarksA, landMarksB):
-        translation = [0, 0, 0]
-        angle = 0
-        axialRotation = [1,0,0]
+        params_init =np.array([0, 0, 0,
+                 0,
+                 1, 0, 0
+                 ])
+        #translation = [0, 0, 0]
+        #angle = 0
+        #axialRotation = [1,0,0]
 
         cA = np.mean(landMarksA, axis=0)
         cB= np.mean(landMarksB, axis=0)
 
-        translation[0] = cA[0] - cB[0]
-        angle = cA[1] - cB[1]
-        axialRotation[2] = cA[2] - cB[2]
+        params_init[0] = cA[0] - cB[0]
+        params_init[1] = cA[1] - cB[1]
+        params_init[2] = cA[2] - cB[2]
 
         def minimize(params):
-            t1,t2,t3, angle, v1,v2,v3 = params
-            translation = np.array([ t1,t2,t3])
-            axialRotation = np.array([v1,v2,v3])
+            #t1,t2,t3, angle, v1,v2,v3 = params
+            #translation = np.array([ t1,t2,t3])
+            #axialRotation = np.array([v1,v2,v3])
             tmpLandMarks = []
             for point in landMarksB:
-                tmpPoint = translation_rotation(point, translation, angle, axialRotation)
+                tmpPoint = translation_rotation(point, params)
                 tmpLandMarks.append(tmpPoint)
             tmpLandMarks = np.array(tmpLandMarks)
             # distance
@@ -265,24 +267,37 @@ if __name__ == '__main__':
             print(ressiduals)
             return ressiduals
 
-        return least_squares(minimize,x0=np.asarray([translation[0],translation[1],translation[2], angle, axialRotation[0],axialRotation[1],axialRotation[2]]), verbose=2)
+        return least_squares(minimize,x0=params_init, verbose=2)
 
     # Coregister landmarks, we want to map the phantom and our image landmarks
     # So we transform our data into points
-    landMarksA = images_phantom.reshape(-1, 3)
-    landMarksB = landMarks_images_pacient.reshape(-1, 3)
+    # landMarksA = images_phantom.reshape(-1, 3)
+    # landMarksB = landMarks_images_pacient.reshape(-1, 3)
+    #optimal_params = start_corregistration(landMarksA, landMarksB)
+    # withouth downsampling is untractable
 
-    optimal_params = start_corregistration(landMarksA, landMarksB)
+    landMarksADownSampled = images_phantom[::4, ::4, ::4].reshape(-1,3)
+    #down_sampled_inp_shape = processed_input[::4, ::4, ::4].shape
+    landMarksBDownSampled = landMarks_images_pacient[::4, ::4, ::4].reshape(-1,3)
 
+    optimal_params = start_corregistration(landMarksADownSampled, landMarksBDownSampled)
+
+    #optimal_params = start_corregistration(landMarksA, landMarksB)
+    # optimal_params = [2, 3, 2.1396e+09, 1.38e+09, 3.80e+00,2.40e+07    ]
     # [1.5, -2.00, -2.38, 0.15, 0.62, 0.51, 0.62]
     print(optimal_params)
+    a = optimal_params
+    tranformationMatrix = [
+        [1.0041,-0.0281733,0.00628774, 0.551022],
+        [0.0370751, 1.02498, 0.119226, -11.8917],
+        [0.0118107,-0.0851302, 1.02398, 11.9543],
+        #[0,0,0,1]
+    ]
+    #tranformationMatrix = np.array(tranformationMatrix)
 
-
-
-
-
-
-
+    #a = slides3d.dot(tranformationMatrix.T)
+    #for i in a:
+    #    print("i")
 
 
 
