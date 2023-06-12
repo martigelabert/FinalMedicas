@@ -261,6 +261,7 @@ if __name__ == '__main__':
     # Crop phantom to atlas size, play with dimensions to make it convertible to 3d cords- in order to perform
     # coregistration
     images_phantom = dc_phantom.pixel_array[6:-6, 6:-7, 6:-6] # we could also apply padding
+
     mask_atlas = get_amygdala_mask(images_atlas)
 
     mask_centroids = find_centroid(mask_atlas)
@@ -415,7 +416,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(1, 2, figsize=(10, 10))
     images = [coregistered_images[centroid_idx], images_phantom[centroid_idx]]
     titles = ["Final Coregistered image", "Phantom"]
-    for i in range(3):
+    for i in range(2):
         ax[i].imshow(images[i], cmap='bone')
         ax[i].set_title(titles[i])
 
@@ -435,16 +436,16 @@ if __name__ == '__main__':
 
     fig, axs = plt.subplots(2, 2)
     axs[0, 0].imshow(median_sagittal_plane(coregistered_images), cmap='bone')
-    ax[0, 0].set_title("median_sagittal_plane coregistered")
+    axs[0, 0].set_title("median_sagittal_plane coregistered")
 
     axs[0, 1].imshow(median_coronal_plane(coregistered_images), cmap='bone')
-    ax[0, 1].set_title("median_coronal_plane coregistered")
+    axs[0, 1].set_title("median_coronal_plane coregistered")
 
     axs[1, 0].imshow(median_sagittal_plane(images_phantom), cmap='bone')
-    ax[1, 0].set_title("median_sagittal_plane images_phantom")
+    axs[1, 0].set_title("median_sagittal_plane images_phantom")
 
     axs[1, 1].imshow(median_coronal_plane(images_phantom), cmap='bone')
-    ax[1, 1].set_title("median_coronal_plane images_phantom")
+    axs[1, 1].set_title("median_coronal_plane images_phantom")
 
     fig.show()
     plt.show()
@@ -475,19 +476,25 @@ if __name__ == '__main__':
         return np.array(fused_slices)
 
 
+    mask_atlas = mask_atlas[:, :-1, :]
     finalphantom = visualize_axial_slice(images_phantom, mask_atlas, mask_centroids)
     finalCT = visualize_axial_slice(coregistered_images, mask_atlas, mask_centroids)
 
-    indices = range(65, 91, 5)
-    for i in indices:
-        axs[0].imshow(finalphantom[i], cmap='bone', interpolation='nearest')
-        axs[0].set_title(f"Reference {i}")
 
-        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-        axs[1].imshow(finalCT[i], cmap='bone', interpolation='nearest')
-        axs[1].set_title(f"Input  {i}")
+    fig, axs = plt.subplots(2, 2)
+    axs[0, 0].imshow(finalCT[70], cmap='bone')
+    axs[0, 0].set_title(f'final coregistered index >> {70}')
 
-        plt.tight_layout()
-        plt.show()
+    axs[0, 1].imshow(finalphantom[70], cmap='bone')
+    axs[0, 1].set_title(f'phantom  index >> {70}')
+
+    axs[1, 0].imshow(finalCT[75], cmap='bone')
+    axs[1, 0].set_title(f'final coregistered index >> {75}')
+
+    axs[1, 1].imshow(finalphantom[75], cmap='bone')
+    axs[1, 1].set_title(f'phantom index >> {75}')
+
+    fig.show()
+    plt.show()
 
     ##########################################
