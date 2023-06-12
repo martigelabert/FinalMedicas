@@ -455,7 +455,6 @@ if __name__ == '__main__':
     print(f'mean_absolute_error (centroid_idx)>> {mean_absolute_error(img_expected, img_obtained)}')
     print(f'mean_squared_error  (centroid_idx)>> {mean_squared_error(img_expected, img_obtained)}')
     print(f'mutual_information  (centroid_idx)>> {mutual_information(img_expected, img_obtained)}')
-
     #########################################
     # Masked
     def visualize_axial_slice(img: np.ndarray, mask: np.ndarray, mask_centroid: np.ndarray) -> np.ndarray:
@@ -476,6 +475,19 @@ if __name__ == '__main__':
         return np.array(fused_slices)
 
 
+    finalphantom = visualize_axial_slice(images_phantom, mask_atlas, mask_centroids)
+    finalCT = visualize_axial_slice(coregistered_images, mask_atlas, mask_centroids)
 
+    indices = range(65, 91, 5)
+    for i in indices:
+        axs[0].imshow(finalphantom[i], cmap='bone', interpolation='nearest')
+        axs[0].set_title(f"Reference {i}")
+
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+        axs[1].imshow(finalCT[i], cmap='bone', interpolation='nearest')
+        axs[1].set_title(f"Input  {i}")
+
+        plt.tight_layout()
+        plt.show()
 
     ##########################################
