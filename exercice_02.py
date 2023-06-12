@@ -150,9 +150,6 @@ def axial_rotation(
     #   Interpret as 3D point (i.e. drop first coordinate)
     return p_prime[1], p_prime[2], p_prime[3]
 
-
-
-
 def get_dcm_paths(path):
     def _custom_sort(filename):
         x = int(filename.split('.')[0])
@@ -170,7 +167,6 @@ def translation_rotation(point, params):
     t_x, t_y, t_z = translation([x, y, z], [t1, t2, t3])
     r_x, r_y, r_z = axial_rotation([t_x, t_y, t_z], angle_in_rads,[v1, v2, v3])
     return [r_x, r_y, r_z]
-
 
 if __name__ == '__main__':
 
@@ -212,6 +208,8 @@ if __name__ == '__main__':
 
     mask_centroids_index = find_centroid(mask_atlas)[0].astype('int')
 
+
+
     # manual shaping and croping of patient data
     # slides3d
     # Checked with 3d slicer to make it more or less accuarated
@@ -221,8 +219,8 @@ if __name__ == '__main__':
                    80:430]
 
     aspect_ratio_zoom = (mask_atlas.shape[0] / match_slices.shape[0],
-                         (mask_atlas.shape[1] -1 ) / match_slices.shape[1],
-                      mask_atlas.shape[2] / match_slices.shape[2])
+                        (mask_atlas.shape[1] -1 ) / match_slices.shape[1],
+                        mask_atlas.shape[2] / match_slices.shape[2])
 
     final_match_slices = zoom(match_slices, aspect_ratio_zoom, order=1)
 
@@ -232,7 +230,11 @@ if __name__ == '__main__':
 
     # BORRAR
     #processed_input = normalize_intensity(rotated_final_match_slices, images_phantom)
-    rotated_final_match_slices = matchIntensityValues(rotated_final_match_slices, images_phantom)
+
+
+    #rotated_final_match_slices = matchIntensityValues(rotated_final_match_slices, images_phantom)
+
+
     # Generate landmarks
     _normalizedLandmarks = rotated_final_match_slices / np.max(rotated_final_match_slices)
     landMarks_images_pacient = np.round(_normalizedLandmarks, 2) * 100
@@ -264,10 +266,20 @@ if __name__ == '__main__':
             tmpLandMarks = np.array(tmpLandMarks)
             # distance
             ressiduals = np.linalg.norm(landMarksA - tmpLandMarks, axis=1)
-            print(ressiduals)
             return ressiduals
 
         return least_squares(minimize,x0=params_init, verbose=2)
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 10))
+    images = [landMarks_images_pacient[mask_centroids_index], images_phantom[mask_centroids_index]]
+    titles = ["Pacient (Pre - Corregistration)", "Phantom"]
+    for i in range(2):
+        ax[i].imshow(images[i], cmap='bone')
+        ax[i].set_title(titles[i])
+
+    fig.suptitle("Data")
+    fig.tight_layout()
+    plt.show()
 
     # Coregister landmarks, we want to map the phantom and our image landmarks
     # So we transform our data into points
@@ -276,114 +288,171 @@ if __name__ == '__main__':
     #optimal_params = start_corregistration(landMarksA, landMarksB)
     # withouth downsampling is untractable
 
-    landMarksADownSampled = images_phantom[::4, ::4, ::4].reshape(-1,3)
+    landMarksADownSampled = images_phantom[::15, ::15, ::15].reshape(-1,3)
     #down_sampled_inp_shape = processed_input[::4, ::4, ::4].shape
-    landMarksBDownSampled = landMarks_images_pacient[::4, ::4, ::4].reshape(-1,3)
+    landMarksBDownSampled = landMarks_images_pacient[::15, ::15, ::15].reshape(-1,3)
 
-    optimal_params = start_corregistration(landMarksADownSampled, landMarksBDownSampled)
+    #optimal_params = start_corregistration(landMarksADownSampled, landMarksBDownSampled)
+
+    ref_landmarks = landMarksADownSampled
+    inp_landmarks = landMarksBDownSampled
+
+    # Vector of residuals: visualization
+    fig = plt.figure()
+    axs = np.asarray([fig.add_subplot(121, projection='3d'), fig.add_subplot(122, projection='3d')])
+    axs[0].scatter(ref_landmarks[..., 0], ref_landmarks[..., 1], ref_landmarks[..., 2], c=ref_landmarks, marker='o')
+    axs[0].set_title('Reference landmarks')
+    axs[1].scatter(inp_landmarks[..., 0], inp_landmarks[..., 1], inp_landmarks[..., 2], c=ref_landmarks, marker='^')
+    axs[1].set_title('Input landmarks')
+    # Uniform axis scaling
+    all_points = np.concatenate([ref_landmarks, inp_landmarks], axis=0)
+    range_x = np.asarray([np.min(all_points[..., 0]), np.max(all_points[..., 0])])
+    range_y = np.asarray([np.min(all_points[..., 1]), np.max(all_points[..., 1])])
+    range_z = np.asarray([np.min(all_points[..., 2]), np.max(all_points[..., 2])])
+    max_midrange = max(range_x[1]-range_x[0], range_y[1]-range_y[0], range_z[1]-range_z[0]) / 2
+    for ax in axs.flatten():
+        ax.set_xlim3d(range_x[0]/2 + range_x[1]/2 - max_midrange, range_x[0]/2 + range_x[1]/2 + max_midrange)
+        ax.set_ylim3d(range_y[0]/2 + range_y[1]/2 - max_midrange, range_y[0]/2 + range_y[1]/2 + max_midrange)
+        ax.set_zlim3d(range_z[0]/2 + range_z[1]/2 - max_midrange, range_z[0]/2 + range_z[1]/2 + max_midrange)
+    fig.show()
 
     #optimal_params = start_corregistration(landMarksA, landMarksB)
     # optimal_params = [2, 3, 2.1396e+09, 1.38e+09, 3.80e+00,2.40e+07    ]
-    # [1.5, -2.00, -2.38, 0.15, 0.62, 0.51, 0.62]
-    print(optimal_params)
-    a = optimal_params
-    tranformationMatrix = [
-        [1.0041,-0.0281733,0.00628774, 0.551022],
-        [0.0370751, 1.02498, 0.119226, -11.8917],
-        [0.0118107,-0.0851302, 1.02398, 11.9543],
-        #[0,0,0,1]
-    ]
-    #tranformationMatrix = np.array(tranformationMatrix)
-
-    #a = slides3d.dot(tranformationMatrix.T)
-    #for i in a:
-    #    print("i")
+    #x: [-2.026e+00 - 1.732e+00 - 2.614e+00 - 1.314e-01  7.499e-01 5.514e-01  6.027e-01]
+    #print(optimal_params)
+    result = optimal_params
+    # Coregister landmarks
 
 
 
+    solution_found = result.x
 
+    t1, t2, t3, angle_in_rads, v1, v2, v3 = result.x
+    print(f'Best parameters:')
+    print(f'  >> Translation: ({t1:0.02f}, {t2:0.02f}, {t3:0.02f}).')
+    print(f'  >> Rotation: {angle_in_rads:0.02f} rads around axis ({v1:0.02f}, {v2:0.02f}, {v3:0.02f}).')
 
+    inp_landmarks_transf = np.asarray([translation_rotation(point, result.x) for point in inp_landmarks])
 
-
-
-
-
-
-
-    # Si realizas crop no se requiere esta parte
-    padded_images_atlas = [np.pad(img_atlas,[(int((images_phantom.shape[0] - images_atlas.shape[0]) / 2),),
-                                             (int((images_phantom.shape[1] - images_atlas.shape[1]) / 2),)],mode='constant') for img_atlas in images_atlas]
-
-    padded_images_atlas = np.array(padded_images_atlas)
-
-    for i,img_atlas in enumerate(images_atlas):
-        fig, axs = plt.subplots(3, 3)
-        axs[0,0].imshow(padded_images_atlas[i,:,:], cmap='bone')
-        axs[0,1].imshow(padded_images_atlas[:, i, :], cmap='bone')
-        axs[0,2].imshow(padded_images_atlas[:, :, i], cmap='bone')
-
-        axs[1,0].imshow(images_phantom[i,:,:], cmap='bone')
-        axs[1,1].imshow(images_phantom[:, i, :], cmap='bone')
-        axs[1,2].imshow(images_phantom[:, :, i], cmap='bone')
-
-        axs[2,0].imshow(slides3d[i,:,:], cmap='bone' )
-        axs[2,1].imshow(slides3d[:, i, :], cmap='bone', aspect=_sliceThickness)
-        axs[2,2].imshow(slides3d[:, :, i], cmap='bone' , aspect=_sliceThickness)
-        fig.show()
-        plt.show()
-
-    for img_patient in slides3d:
-
-        print(img_patient.shape)
-        # Crear figura y subplots
-        fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-
-        # Subplot 1
-        axs[0, 0].imshow(img_patient)
-        #axs[0, 0].set_title('Imagen 1')
-
-        # Subplot 2
-        axs[0, 1].imshow(img_patient)
-        #axs[0, 1].set_title('Imagen 2')
-
-        # Subplot 3
-        axs[1, 0].imshow(img_patient)
-        #axs[1, 0].set_title('Imagen 3')
-
-        # Subplot 4
-        axs[1, 1].imshow(img_patient)
-        #axs[1, 1].set_title('Imagen 4')
-
-        # Ajustar espaciado entre subplots
-        plt.tight_layout()
-
-        # Ocultar ejes de coordenadas
-        for ax in axs.flat:
-            ax.axis('off')
-
-        # Mostrar el gráfico
-        plt.show()
+    # Optimization visualization
+    fig = plt.figure()
+    fig.suptitle('Reference (circle) and input (triangle) landmarks')
+    axs = np.asarray([fig.add_subplot(121, projection='3d'), fig.add_subplot(122, projection='3d')])
+    axs[0].scatter(ref_landmarks[..., 0], ref_landmarks[..., 1], ref_landmarks[..., 2], c=ref_landmarks, marker='o')
+    axs[0].scatter(inp_landmarks[..., 0], inp_landmarks[..., 1], inp_landmarks[..., 2], c=ref_landmarks, marker='^')
+    axs[0].set_title('Before')
+    axs[1].scatter(ref_landmarks[..., 0], ref_landmarks[..., 1], ref_landmarks[..., 2], c=ref_landmarks, marker='o')
+    axs[1].scatter(inp_landmarks_transf[..., 0], inp_landmarks_transf[..., 1], inp_landmarks_transf[..., 2],
+                   c=ref_landmarks, marker='^')
+    axs[1].set_title('After')
+    # Uniform axis scaling
+    for ax in axs.flatten():
+        ax.set_xlim3d(range_x[0] / 2 + range_x[1] / 2 - max_midrange, range_x[0] / 2 + range_x[1] / 2 + max_midrange)
+        ax.set_ylim3d(range_y[0] / 2 + range_y[1] / 2 - max_midrange, range_y[0] / 2 + range_y[1] / 2 + max_midrange)
+        ax.set_zlim3d(range_z[0] / 2 + range_z[1] / 2 - max_midrange, range_z[0] / 2 + range_z[1] / 2 + max_midrange)
+    fig.show()
 
 
 
 
-    #imgs_atlas = atlas.pixel_array
-    #print(imgs_atlas.shape)
-    # este
-    #plt.imshow(imgs_atlas[80])
-    #plt.show()
+    if False:
+        tranformationMatrix = [
+            [1.0041,-0.0281733,0.00628774, 0.551022],
+            [0.0370751, 1.02498, 0.119226, -11.8917],
+            [0.0118107,-0.0851302, 1.02398, 11.9543],
+            #[0,0,0,1]
+        ]
+        #tranformationMatrix = np.array(tranformationMatrix)
 
-    #voxelView(imgs_atlas)
-    #for i in imgs_atlas:
-    # atlas
-    #padding = [np.pad(img_atlas,[(int())])]
+        #a = slides3d.dot(tranformationMatrix.T)
+        #for i in a:
+        #    print("i")
 
 
 
 
 
-    # the phantom es inmutable
-    # osea que voy a tener que transformar los otros (rotarl al segor que mira de perfir y rotarlo para que se
-    # ajuste a la rotación del fantom)
 
-    # el que esta rotado es el phantom
+
+
+
+
+
+
+        # Si realizas crop no se requiere esta parte
+        padded_images_atlas = [np.pad(img_atlas,[(int((images_phantom.shape[0] - images_atlas.shape[0]) / 2),),
+                                                 (int((images_phantom.shape[1] - images_atlas.shape[1]) / 2),)],mode='constant') for img_atlas in images_atlas]
+
+        padded_images_atlas = np.array(padded_images_atlas)
+
+        for i,img_atlas in enumerate(images_atlas):
+            fig, axs = plt.subplots(3, 3)
+            axs[0,0].imshow(padded_images_atlas[i,:,:], cmap='bone')
+            axs[0,1].imshow(padded_images_atlas[:, i, :], cmap='bone')
+            axs[0,2].imshow(padded_images_atlas[:, :, i], cmap='bone')
+
+            axs[1,0].imshow(images_phantom[i,:,:], cmap='bone')
+            axs[1,1].imshow(images_phantom[:, i, :], cmap='bone')
+            axs[1,2].imshow(images_phantom[:, :, i], cmap='bone')
+
+            axs[2,0].imshow(slides3d[i,:,:], cmap='bone' )
+            axs[2,1].imshow(slides3d[:, i, :], cmap='bone', aspect=_sliceThickness)
+            axs[2,2].imshow(slides3d[:, :, i], cmap='bone' , aspect=_sliceThickness)
+            fig.show()
+            plt.show()
+
+        for img_patient in slides3d:
+
+            print(img_patient.shape)
+            # Crear figura y subplots
+            fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+
+            # Subplot 1
+            axs[0, 0].imshow(img_patient)
+            #axs[0, 0].set_title('Imagen 1')
+
+            # Subplot 2
+            axs[0, 1].imshow(img_patient)
+            #axs[0, 1].set_title('Imagen 2')
+
+            # Subplot 3
+            axs[1, 0].imshow(img_patient)
+            #axs[1, 0].set_title('Imagen 3')
+
+            # Subplot 4
+            axs[1, 1].imshow(img_patient)
+            #axs[1, 1].set_title('Imagen 4')
+
+            # Ajustar espaciado entre subplots
+            plt.tight_layout()
+
+            # Ocultar ejes de coordenadas
+            for ax in axs.flat:
+                ax.axis('off')
+
+            # Mostrar el gráfico
+            plt.show()
+
+
+
+
+        #imgs_atlas = atlas.pixel_array
+        #print(imgs_atlas.shape)
+        # este
+        #plt.imshow(imgs_atlas[80])
+        #plt.show()
+
+        #voxelView(imgs_atlas)
+        #for i in imgs_atlas:
+        # atlas
+        #padding = [np.pad(img_atlas,[(int())])]
+
+
+
+
+
+        # the phantom es inmutable
+        # osea que voy a tener que transformar los otros (rotarl al segor que mira de perfir y rotarlo para que se
+        # ajuste a la rotación del fantom)
+
+        # el que esta rotado es el phantom
