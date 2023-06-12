@@ -410,11 +410,11 @@ if __name__ == '__main__':
     plt.show()
     #########################################
 
-    coregistered_image = finalLandMarks.reshape(181, 216, 181)
+    coregistered_images = finalLandMarks.reshape(181, 216, 181)
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 10))
-    images = [coregistered_image[centroid_idx], images_phantom[centroid_idx]]
-    titles = ["Coregistered image", "Phantom"]
+    images = [coregistered_images[centroid_idx], images_phantom[centroid_idx]]
+    titles = ["Final Coregistered image", "Phantom"]
     for i in range(3):
         ax[i].imshow(images[i], cmap='bone')
         ax[i].set_title(titles[i])
@@ -425,6 +425,57 @@ if __name__ == '__main__':
 
     #########################################
 
-    
+    def median_sagittal_plane(img_dcm: np.ndarray) -> np.ndarray:
+        """ Compute the median sagittal plane of the CT image provided. """
+        return img_dcm[:, :, img_dcm.shape[1] // 2]
+
+    def median_coronal_plane(img_dcm: np.ndarray) -> np.ndarray:
+        """ Compute the median sagittal plane of the CT image provided. """
+        return img_dcm[:, img_dcm.shape[2] // 2, :]
+
+    fig, axs = plt.subplots(2, 2)
+    axs[0, 0].imshow(median_sagittal_plane(coregistered_images), cmap='bone')
+    ax[0, 0].set_title("median_sagittal_plane coregistered")
+
+    axs[0, 1].imshow(median_coronal_plane(coregistered_images), cmap='bone')
+    ax[0, 1].set_title("median_coronal_plane coregistered")
+
+    axs[1, 0].imshow(median_sagittal_plane(images_phantom), cmap='bone')
+    ax[1, 0].set_title("median_sagittal_plane images_phantom")
+
+    axs[1, 1].imshow(median_coronal_plane(images_phantom), cmap='bone')
+    ax[1, 1].set_title("median_coronal_plane images_phantom")
+
+    fig.show()
+    plt.show()
+    #########################################
+    img_obtained = coregistered_images[centroid_idx, :, :]
+    img_expected = images_phantom[centroid_idx, :, :]
+
+    print(f'mean_absolute_error (centroid_idx)>> {mean_absolute_error(img_expected, img_obtained)}')
+    print(f'mean_squared_error  (centroid_idx)>> {mean_squared_error(img_expected, img_obtained)}')
+    print(f'mutual_information  (centroid_idx)>> {mutual_information(img_expected, img_obtained)}')
 
     #########################################
+    # Masked
+    def visualize_axial_slice(img: np.ndarray, mask: np.ndarray, mask_centroid: np.ndarray) -> np.ndarray:
+        """ Visualize the axial slice (first dimension) of a single region with alpha fusion. """
+        fused_slices = []
+
+        for i in range(img.shape[0]):
+            cmap = plt.get_cmap('bone')
+            norm = plt.Normalize(vmin=np.amin(img[i]), vmax=np.amax(img[i]))
+
+            fused_slice = (
+                    0.75 * cmap(norm(img[i]))[..., :3] +
+                    0.25 * np.stack([mask[i], np.zeros_like(mask[i]), np.zeros_like(mask[i])], axis=-1)
+            )
+
+            fused_slices.append(fused_slice[..., 0])
+
+        return np.array(fused_slices)
+
+
+
+
+    ##########################################
