@@ -232,7 +232,7 @@ def mutual_information(img_input: np.ndarray, img_reference) -> np.ndarray:
     return entropy_input + entropy_reference - joint_entropy
 
 
-_atlasPath = 'Project/AAL3_1mm.dcm'
+_atlasPath   = 'Project/AAL3_1mm.dcm'
 _panthomPath = 'Project/icbm_avg_152_t1_tal_nlin_symmetric_VI.dcm'
 
 
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     # Clean our CT
     # manual shaping and crop of CT of the patient
     match_slices = slides3d[
-                   (slides3d.shape[0] - 181) + 3 :(slides3d.shape[0] - 181) + 181,
+                   (slides3d.shape[0] - 181) + 3 :(slides3d.shape[0] - 181) + 3 + 181,
                    45:450,
                    80:430]
 
@@ -324,11 +324,11 @@ if __name__ == '__main__':
     processedCT = preprocessed_input(rotatedCT)
 
     # Computing The landmarks (https://gist.github.com/tschreiner/8f971bbbd40606e58f1e4fb1852e8b8e)
-    landmarks_ref = images_phantom[::15, ::15, ::15].reshape(-1,3)
-    landmarks_input = processedCT[::15, ::15, ::15].reshape(-1,3)
+    landmarks_ref = images_phantom[::9, ::9, ::9].reshape(-1,3)
+    landmarks_input = processedCT[::9, ::9, ::9].reshape(-1,3)
 
     # for visualization propuses
-    all_ref  = images_phantom.reshape(-1,3)
+    all_ref = images_phantom.reshape(-1,3)
     all_input = processedCT.reshape(-1,3)
 
     residuals_tpm = vector_of_residuals(landmarks_ref, landmarks_input)
@@ -435,13 +435,13 @@ if __name__ == '__main__':
         return img_dcm[:, img_dcm.shape[2] // 2, :]
 
     fig, axs = plt.subplots(2, 2)
-    axs[0, 0].imshow(median_sagittal_plane(coregistered_images), cmap='bone')
+    axs[0, 0].imshow(median_sagittal_plane(np.flip(np.flip(coregistered_images, axis=0), axis=1)), cmap='bone')
     axs[0, 0].set_title("median_sagittal_plane coregistered")
 
     axs[0, 1].imshow(median_coronal_plane(coregistered_images), cmap='bone')
     axs[0, 1].set_title("median_coronal_plane coregistered")
 
-    axs[1, 0].imshow(median_sagittal_plane(images_phantom), cmap='bone')
+    axs[1, 0].imshow(median_sagittal_plane(np.flip(images_phantom, axis=0)), cmap='bone')
     axs[1, 0].set_title("median_sagittal_plane images_phantom")
 
     axs[1, 1].imshow(median_coronal_plane(images_phantom), cmap='bone')
@@ -461,7 +461,6 @@ if __name__ == '__main__':
     def visualize_axial_slice(img: np.ndarray, mask: np.ndarray, mask_centroid: np.ndarray) -> np.ndarray:
         """ Visualize the axial slice (first dimension) of a single region with alpha fusion. """
         fused_slices = []
-
         for i in range(img.shape[0]):
             cmap = plt.get_cmap('bone')
             norm = plt.Normalize(vmin=np.amin(img[i]), vmax=np.amax(img[i]))
@@ -470,30 +469,28 @@ if __name__ == '__main__':
                     0.75 * cmap(norm(img[i]))[..., :3] +
                     0.25 * np.stack([mask[i], np.zeros_like(mask[i]), np.zeros_like(mask[i])], axis=-1)
             )
-
             fused_slices.append(fused_slice[..., 0])
-
         return np.array(fused_slices)
 
 
     # show amigdala segmented
     mask_atlas = mask_atlas[:, :-1, :]
     finalphantom = visualize_axial_slice(images_phantom, mask_atlas, mask_centroids)
-    finalCT = visualize_axial_slice(coregistered_images, mask_atlas, mask_centroids)
+    finalCT = visualize_axial_slice(np.flip(coregistered_images,axis=1) , mask_atlas, mask_centroids)
 
 
     fig, axs = plt.subplots(2, 2)
-    axs[0, 0].imshow(finalCT[70], cmap='bone')
-    axs[0, 0].set_title(f'final coregistered index >> {70}')
+    axs[0, 0].imshow(finalCT[mask_centroids[0].astype("int")], cmap='bone')
+    axs[0, 0].set_title(f'final coregistered index >> {mask_centroids[0].astype("int")}')
 
-    axs[0, 1].imshow(finalphantom[70], cmap='bone')
-    axs[0, 1].set_title(f'phantom  index >> {70}')
+    axs[0, 1].imshow(finalphantom[mask_centroids[0].astype("int")], cmap='bone')
+    axs[0, 1].set_title(f'phantom  index >> {mask_centroids[0].astype("int")}')
 
-    axs[1, 0].imshow(finalCT[75], cmap='bone')
-    axs[1, 0].set_title(f'final coregistered index >> {75}')
+    axs[1, 0].imshow(finalCT[mask_centroids[1].astype("int")], cmap='bone')
+    axs[1, 0].set_title(f'final coregistered index >> {mask_centroids[1].astype("int")}')
 
-    axs[1, 1].imshow(finalphantom[75], cmap='bone')
-    axs[1, 1].set_title(f'phantom index >> {75}')
+    axs[1, 1].imshow(finalphantom[mask_centroids[1].astype("int")], cmap='bone')
+    axs[1, 1].set_title(f'phantom index >> {mask_centroids[1].astype("int")}')
 
     fig.show()
     plt.show()
