@@ -476,6 +476,7 @@ if __name__ == '__main__':
         return np.array(fused_slices)
 
 
+    # show amigdala segmented
     mask_atlas = mask_atlas[:, :-1, :]
     finalphantom = visualize_axial_slice(images_phantom, mask_atlas, mask_centroids)
     finalCT = visualize_axial_slice(coregistered_images, mask_atlas, mask_centroids)

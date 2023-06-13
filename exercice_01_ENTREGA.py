@@ -36,10 +36,7 @@ def get_segmentation_masks_correctly_place():
     mask4 = []
 
     for index,i in enumerate(ds['PerFrameFunctionalGroupsSequence']):
-        image_position = i.PlanePositionSequence[0].ImagePositionPatient # última componente es la que cambia
-        #print(image_position)
-        #print(image_position)
-        #print(i)
+        image_position = i.PlanePositionSequence[0].ImagePositionPatient # última componente
 
         segment_seq = i.SegmentIdentificationSequence
         if segment_seq is not None:
@@ -66,19 +63,6 @@ def get_segmentation_masks_correctly_place():
     mask2 = sortMaks(mask2)
     mask3 = sortMaks(mask3)
     mask4 = sortMaks(mask4)
-            #print("Segment Number:", segment_number)
-            #print("Segment Label:", algo)
-            #plt.imshow(i.pixel_array)
-            #plt.show()
-
-
-
-
-
-    #mask1 = segmentation[:89]
-    #mask2 = segmentation[89:89 * 2]
-    #mask3 = segmentation[89 * 2 + 1:89 * 3 + 1]
-    #mask4 = segmentation[89 * 3:]
 
     return mask1, mask2, mask3, mask4
 
