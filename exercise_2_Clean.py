@@ -173,7 +173,7 @@ def coregister_landmarks(ref_landmarks: np.ndarray, inp_landmarks: np.ndarray):
         verbose=1)
     return result
 
-def get_amygdala_mask(img_atlas: np.ndarray) -> np.ndarray:
+def ger_mask_thalamus(img_atlas: np.ndarray) -> np.ndarray:
     # Your code here:
     #   ...
     amygdala_mask = np.zeros_like(img_atlas)
@@ -234,9 +234,12 @@ def mutual_information(img_input: np.ndarray, img_reference) -> np.ndarray:
 
 _atlasPath   = 'Project/AAL3_1mm.dcm'
 _panthomPath = 'Project/icbm_avg_152_t1_tal_nlin_symmetric_VI.dcm'
-
+_view3D = False
 
 if __name__ == '__main__':
+
+
+
     ########################################
     dc_atlas = pydicom.dcmread(_atlasPath)
     dc_phantom = pydicom.dcmread(_panthomPath)
@@ -254,7 +257,7 @@ if __name__ == '__main__':
     pixel_len_mm = [_sliceThickness, pixel_spacing_y, pixel_spacing_x]
 
     slices = sorted(slices, key=lambda s: s.SliceLocation)
-    slides3d = np.array([s.pixel_array for s in slices])
+    slides3d = np.array([np.flip(s.pixel_array, axis=0) for s in slices])
 
     images_atlas = dc_atlas.pixel_array
 
@@ -262,7 +265,7 @@ if __name__ == '__main__':
     # coregistration
     images_phantom = dc_phantom.pixel_array[6:-6, 6:-7, 6:-6] # we could also apply padding
 
-    mask_atlas = get_amygdala_mask(images_atlas)
+    mask_atlas = ger_mask_thalamus(images_atlas)
 
     mask_centroids = find_centroid(mask_atlas)
     centroid_idx = mask_centroids[0].astype('int')
@@ -307,7 +310,7 @@ if __name__ == '__main__':
     def rotate_on_axial_plane(img_dcm: np.ndarray, angle_in_degrees: float) -> np.ndarray:
         return scipy.ndimage.rotate(img_dcm, angle_in_degrees, axes=(1, 2), reshape=False)
 
-    rotatedCT = rotate_on_axial_plane(zoomCT, -2)  # Rotate the data on the axial plane
+    rotatedCT = rotate_on_axial_plane(zoomCT, 3)  # Rotate the data on the axial plane
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 10))
     images = [zoomCT[centroid_idx], rotatedCT[centroid_idx]]
@@ -334,37 +337,37 @@ if __name__ == '__main__':
     residuals_tpm = vector_of_residuals(landmarks_ref, landmarks_input)
     print(f'>> Mean residual value: {np.mean(residuals_tpm.flatten())}.') # Before Corregistration
     ############################################
+    if _view3D:
+        fig = plt.figure(figsize=(15, 15))
 
-    fig = plt.figure(figsize=(15, 15))
+        ax1 = fig.add_subplot(121, projection='3d')
+        ax2 = fig.add_subplot(122, projection='3d')
 
-    ax1 = fig.add_subplot(121, projection='3d')
-    ax2 = fig.add_subplot(122, projection='3d')
+        ax2.scatter(all_input[..., 0], all_input[..., 1], all_input[..., 2], marker='^', color='blue')
+        ax2.set_title('Input')
 
-    ax2.scatter(all_input[..., 0], all_input[..., 1], all_input[..., 2], marker='^', color='blue')
-    ax2.set_title('Input')
+        ax1.scatter(all_ref[..., 0], all_ref[..., 1], all_ref[..., 2], marker='o', color='green')
+        ax1.set_title('Reference')
 
-    ax1.scatter(all_ref[..., 0], all_ref[..., 1], all_ref[..., 2], marker='o', color='green')
-    ax1.set_title('Reference')
+        for ax in [ax1, ax2]:
+            ax.set_box_aspect([1, 1, 1])
 
-    for ax in [ax1, ax2]:
-        ax.set_box_aspect([1, 1, 1])
+        all_points = np.concatenate([all_ref, all_input], axis=0)
+        ax1.set_xlim3d(np.min(all_points), np.max(all_points))
+        ax1.set_ylim3d(np.min(all_points), np.max(all_points))
+        ax1.set_zlim3d(np.min(all_points), np.max(all_points))
+        ax2.set_xlim3d(np.min(all_points), np.max(all_points))
+        ax2.set_ylim3d(np.min(all_points), np.max(all_points))
+        ax2.set_zlim3d(np.min(all_points), np.max(all_points))
 
-    all_points = np.concatenate([all_ref, all_input], axis=0)
-    ax1.set_xlim3d(np.min(all_points), np.max(all_points))
-    ax1.set_ylim3d(np.min(all_points), np.max(all_points))
-    ax1.set_zlim3d(np.min(all_points), np.max(all_points))
-    ax2.set_xlim3d(np.min(all_points), np.max(all_points))
-    ax2.set_ylim3d(np.min(all_points), np.max(all_points))
-    ax2.set_zlim3d(np.min(all_points), np.max(all_points))
+        for ax in [ax1, ax2]:
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
 
-    for ax in [ax1, ax2]:
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-
-    fig.suptitle("Landmark Before coregistration")
-    fig.tight_layout()
-    plt.show()
+        fig.suptitle("Landmark Before coregistration")
+        fig.tight_layout()
+        plt.show()
 
     #############################
     # find our optimal params
@@ -378,37 +381,37 @@ if __name__ == '__main__':
     ###############################
     # Apply our ideal params to the landmarks on each point
     finalLandMarks = np.asarray([translation_then_axialrotation(point, optimal_params) for point in all_input[:]])
+    if _view3D:
+        fig = plt.figure(figsize=(15, 15))
 
-    fig = plt.figure(figsize=(15, 15))
+        ax1 = fig.add_subplot(121, projection='3d')
+        ax2 = fig.add_subplot(122, projection='3d')
 
-    ax1 = fig.add_subplot(121, projection='3d')
-    ax2 = fig.add_subplot(122, projection='3d')
+        ax2.scatter(finalLandMarks[..., 0], finalLandMarks[..., 1], finalLandMarks[..., 2], marker='^', color='blue')
+        ax2.set_title('Transformed Input')
 
-    ax2.scatter(finalLandMarks[..., 0], finalLandMarks[..., 1], finalLandMarks[..., 2], marker='^', color='blue')
-    ax2.set_title('Transformed Input')
+        ax1.scatter(all_ref[..., 0], all_ref[..., 1], all_ref[..., 2], marker='o', color='green')
+        ax1.set_title('Reference')
 
-    ax1.scatter(all_ref[..., 0], all_ref[..., 1], all_ref[..., 2], marker='o', color='green')
-    ax1.set_title('Reference')
+        for ax in [ax1, ax2]:
+            ax.set_box_aspect([1, 1, 1])
 
-    for ax in [ax1, ax2]:
-        ax.set_box_aspect([1, 1, 1])
+        all_points = np.concatenate([all_ref, finalLandMarks], axis=0)
+        ax1.set_xlim3d(np.min(all_points), np.max(all_points))
+        ax1.set_ylim3d(np.min(all_points), np.max(all_points))
+        ax1.set_zlim3d(np.min(all_points), np.max(all_points))
+        ax2.set_xlim3d(np.min(all_points), np.max(all_points))
+        ax2.set_ylim3d(np.min(all_points), np.max(all_points))
+        ax2.set_zlim3d(np.min(all_points), np.max(all_points))
 
-    all_points = np.concatenate([all_ref, finalLandMarks], axis=0)
-    ax1.set_xlim3d(np.min(all_points), np.max(all_points))
-    ax1.set_ylim3d(np.min(all_points), np.max(all_points))
-    ax1.set_zlim3d(np.min(all_points), np.max(all_points))
-    ax2.set_xlim3d(np.min(all_points), np.max(all_points))
-    ax2.set_ylim3d(np.min(all_points), np.max(all_points))
-    ax2.set_zlim3d(np.min(all_points), np.max(all_points))
+        for ax in [ax1, ax2]:
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
 
-    for ax in [ax1, ax2]:
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-
-    fig.suptitle("Landmarks coregistered")
-    fig.tight_layout()
-    plt.show()
+        fig.suptitle("Landmarks coregistered")
+        fig.tight_layout()
+        plt.show()
     #########################################
 
     coregistered_images = finalLandMarks.reshape(181, 216, 181)
@@ -423,7 +426,6 @@ if __name__ == '__main__':
     fig.suptitle("")
     fig.tight_layout()
     plt.show()
-
     #########################################
 
     def median_sagittal_plane(img_dcm: np.ndarray) -> np.ndarray:
@@ -434,17 +436,18 @@ if __name__ == '__main__':
         """ Compute the median sagittal plane of the CT image provided. """
         return img_dcm[:, img_dcm.shape[2] // 2, :]
 
+
     fig, axs = plt.subplots(2, 2)
-    axs[0, 0].imshow(median_sagittal_plane(np.flip(np.flip(coregistered_images, axis=0), axis=1)), cmap='bone')
+    axs[0, 0].imshow(median_sagittal_plane(np.flip(coregistered_images, axis=0)), cmap='bone')
     axs[0, 0].set_title("median_sagittal_plane coregistered")
 
-    axs[0, 1].imshow(median_coronal_plane(coregistered_images), cmap='bone')
+    axs[0, 1].imshow(median_coronal_plane(np.flip(coregistered_images, axis=0)), cmap='bone')
     axs[0, 1].set_title("median_coronal_plane coregistered")
 
     axs[1, 0].imshow(median_sagittal_plane(np.flip(images_phantom, axis=0)), cmap='bone')
     axs[1, 0].set_title("median_sagittal_plane images_phantom")
 
-    axs[1, 1].imshow(median_coronal_plane(images_phantom), cmap='bone')
+    axs[1, 1].imshow(median_coronal_plane(np.flip(images_phantom, axis=0)), cmap='bone')
     axs[1, 1].set_title("median_coronal_plane images_phantom")
 
     fig.show()
@@ -473,10 +476,15 @@ if __name__ == '__main__':
         return np.array(fused_slices)
 
 
-    # show amigdala segmented
+    # show thalamus segmented
     mask_atlas = mask_atlas[:, :-1, :]
-    finalphantom = visualize_axial_slice(images_phantom, mask_atlas, mask_centroids)
-    finalCT = visualize_axial_slice(np.flip(coregistered_images,axis=1) , mask_atlas, mask_centroids)
+
+    #tmp = mask_atlas.reshape(-1,3)
+    #tmp_landmarks = np.asarray([translation_then_axialrotation(point, optimal_params) for point in tmp[:]])
+    #mask_atlas = tmp_landmarks.reshape(181, 216, 181)
+
+    finalphantom = visualize_axial_slice(images_phantom,  mask_atlas, mask_centroids)
+    finalCT = visualize_axial_slice(coregistered_images , mask_atlas, mask_centroids)
 
 
     fig, axs = plt.subplots(2, 2)
